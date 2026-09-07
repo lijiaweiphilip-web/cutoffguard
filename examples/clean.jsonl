@@ -1,0 +1,2 @@
+{"id":"x1","observed_at":"2024-01-31T00:00:00Z","available_at":"2024-02-02T00:00:00Z","value":1.1,"source":"example"}
+{"id":"x2","observed_at":"2024-02-29T00:00:00Z","available_at":"2024-03-02T00:00:00Z","value":1.2,"source":"example"}

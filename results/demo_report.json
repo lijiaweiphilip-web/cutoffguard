@@ -1,0 +1,14 @@
+{
+  "cutoff": "2024-04-15T00:00:00+00:00",
+  "status": "fail",
+  "checked_records": 2,
+  "findings": [
+    {
+      "code": "POST_CUTOFF_AVAILABILITY",
+      "record_id": "gdp_q1",
+      "severity": "error",
+      "message": "information was not available by cutoff"
+    }
+  ],
+  "assurance_boundary": "No listed temporal violation was found under the declared metadata. This is not proof that an arbitrary pipeline is leakage-free."
+}
