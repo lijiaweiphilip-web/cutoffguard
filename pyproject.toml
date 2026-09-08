@@ -4,28 +4,43 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cutoffguard"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cutoff-aware leakage diagnostics for temporal ML and research pipelines"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{name = "Jiawei (Philip) Li"}]
-keywords = ["time-series", "leakage", "reproducibility", "model-validation", "temporal-ml"]
+keywords = ["time-series", "data-leakage", "temporal-validation", "model-validation", "research-software", "reproducibility", "financial-ml", "python"]
 classifiers = [
   "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Operating System :: OS Independent",
+  "Typing :: Typed",
 ]
 dependencies = []
 
+[project.urls]
+Homepage = "https://github.com/lijiaweiphilip-web/cutoffguard"
+Repository = "https://github.com/lijiaweiphilip-web/cutoffguard"
+Issues = "https://github.com/lijiaweiphilip-web/cutoffguard/issues"
+Changelog = "https://github.com/lijiaweiphilip-web/cutoffguard/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/lijiaweiphilip-web/cutoffguard/tree/main/docs"
+
 [project.optional-dependencies]
-dev = ["pytest>=8", "build>=1.2", "twine>=5", "ruff>=0.8", "mypy>=1.10"]
+dev = ["pytest>=8", "build>=1.2", "twine>=5", "ruff>=0.8", "mypy>=1.10", "hypothesis>=6.100"]
 
 [project.scripts]
 cutoffguard = "cutoffguard.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+cutoffguard = ["py.typed", "schemas/*.json", "templates/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

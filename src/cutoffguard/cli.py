@@ -1,45 +1,120 @@
 from __future__ import annotations
 
 import argparse
+import sys
+import traceback
 from pathlib import Path
 
+from . import __version__
 from .audit import audit_records
 from .demo import run_demo
+from .errors import CutoffGuardError
+from .finding_registry import definitions_as_dict, explain, list_definitions
 from .io import load_csv, load_jsonl
 from .report import render_json, write_report
 
 
 def parser():
-    p=argparse.ArgumentParser(prog="cutoffguard", description="Audit declared temporal availability in ML/research pipelines.")
-    p.add_argument("--version", action="version", version="cutoffguard 0.1.0")
-    sub=p.add_subparsers(dest="cmd", required=True)
-    a=sub.add_parser("audit", help="audit CSV/JSONL temporal records")
+    p = argparse.ArgumentParser(
+        prog="cutoffguard",
+        description="Audit declared temporal availability in ML/research pipelines.",
+    )
+    p.add_argument("--version", action="version", version=f"cutoffguard {__version__}")
+    p.add_argument(
+        "--debug",
+        action="store_true",
+        help="show a traceback for an expected input error",
+    )
+    sub = p.add_subparsers(dest="cmd", required=True)
+    a = sub.add_parser("audit", help="audit CSV/JSONL temporal records")
     a.add_argument("input")
     a.add_argument("--cutoff", required=True)
-    a.add_argument("--format", choices=["json","html"], default="json")
+    a.add_argument("--format", choices=["json", "html"], default="json")
     a.add_argument("--output")
     a.add_argument("--allow-missing-availability", action="store_true")
-    d=sub.add_parser("demo", help="run the packaged controlled demo")
-    d.add_argument("--format", choices=["json","html"], default="json")
+    a.add_argument(
+        "--debug",
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
+    )
+    e = sub.add_parser("explain", help="explain a finding code")
+    e.add_argument("code", nargs="?")
+    e.add_argument("--list", action="store_true", help="list registered finding codes")
+    e.add_argument("--format", choices=["text", "json"], default="text")
+    d = sub.add_parser("demo", help="run the packaged controlled demo")
+    d.add_argument("--format", choices=["json", "html"], default="json")
     d.add_argument("--output")
+    d.add_argument(
+        "--debug",
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
+    )
     return p
 
 
 def main(argv=None):
-    args=parser().parse_args(argv)
-    if args.cmd=="demo":
-        report=run_demo()
-    else:
-        path=Path(args.input)
-        records=load_jsonl(path) if path.suffix.lower()==".jsonl" else load_csv(path)
-        report=audit_records(records,args.cutoff,require_availability=not args.allow_missing_availability)
-    if args.output:
-        write_report(report,args.output,args.format)
-    else:
-        if args.format=="json": print(render_json(report))
+    args = parser().parse_args(argv)
+    try:
+        if args.cmd == "demo":
+            report = run_demo()
+        elif args.cmd == "explain":
+            if args.list:
+                if args.format == "json":
+                    import json
+
+                    print(json.dumps(definitions_as_dict(), indent=2) + "\n", end="")
+                else:
+                    print("\n".join(item.code for item in list_definitions()))
+                return 0
+            if not args.code:
+                raise CutoffGuardError("provide a finding code or use --list")
+            definition = explain(args.code)
+            if definition is None:
+                raise CutoffGuardError(f"unknown finding code: {args.code}")
+            if args.format == "json":
+                import json
+
+                print(json.dumps(definition.__dict__, indent=2) + "\n", end="")
+            else:
+                print(
+                    f"{definition.code}: {definition.short_explanation}\n"
+                    f"Category: {definition.category}\n"
+                    f"Default severity: {definition.default_severity}\n"
+                    f"Remediation: {definition.remediation}\n"
+                    f"Applies to: {definition.applies_to}"
+                )
+            return 0
+        else:
+            path = Path(args.input)
+            if path.suffix.lower() == ".jsonl":
+                records = load_jsonl(path)
+            elif path.suffix.lower() == ".csv":
+                records = load_csv(path)
+            else:
+                raise CutoffGuardError("unsupported input format; use .jsonl or .csv")
+            report = audit_records(
+                records,
+                args.cutoff,
+                require_availability=not args.allow_missing_availability,
+            )
+        if args.output:
+            write_report(report, args.output, args.format)
+        elif args.format == "json":
+            print(render_json(report), end="")
         else:
             from .report import render_html
-            print(render_html(report))
-    return 2 if report.status=="fail" else (1 if report.status=="review" else 0)
 
-if __name__=="__main__": raise SystemExit(main())
+            print(render_html(report))
+        return 2 if report.status == "fail" else (1 if report.status == "review" else 0)
+    except (CutoffGuardError, OSError, ValueError, TypeError, KeyError) as exc:
+        if getattr(args, "debug", False):
+            traceback.print_exc()
+        else:
+            print(f"error: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return getattr(exc, "exit_code", 4)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
