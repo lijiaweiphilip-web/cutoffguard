@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from cutoffguard.cli import main
 
 
@@ -24,3 +26,23 @@ def test_explain_json_contains_contract_fields(capsys):
     output = capsys.readouterr().out
     assert '"remediation"' in output
     assert '"applies_to"' in output
+
+
+def test_documented_contaminated_fixture_is_a_failure(tmp_path):
+    fixture = (
+        Path(__file__).parents[1] / "examples" / "availability" / "contaminated.jsonl"
+    )
+    report = tmp_path / "contaminated.json"
+    assert (
+        main(
+            [
+                "audit",
+                str(fixture),
+                "--cutoff",
+                "2024-04-15T00:00:00Z",
+                "--output",
+                str(report),
+            ]
+        )
+        == 2
+    )

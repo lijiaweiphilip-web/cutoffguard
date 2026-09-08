@@ -1,0 +1,1 @@
+{"schema_version":"1.0","run_id":"path-escape","training_cutoff":"2024-01-31T00:00:00Z","evaluation_cutoff":"2024-06-30T00:00:00Z","records":"..\\records.jsonl","splits":[{"name":"train","record_ids":["train_1"]},{"name":"validation","record_ids":[]},{"name":"test","record_ids":[]}],"artifacts":[]}
