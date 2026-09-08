@@ -1,0 +1,22 @@
+name: CutoffGuard manifest audit
+description: Run CutoffGuard against a declared temporal run manifest and save SARIF/JUnit reports.
+inputs:
+  manifest:
+    description: Path to a run-manifest JSON file.
+    required: true
+  output-directory:
+    description: Directory for generated reports.
+    required: false
+    default: cutoffguard-reports
+runs:
+  using: composite
+  steps:
+    - name: Install CutoffGuard from this repository
+      shell: bash
+      run: python -m pip install --no-deps .
+    - name: Write SARIF and JUnit reports
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.output-directory }}"
+        python -m cutoffguard.cli audit-manifest "${{ inputs.manifest }}" --format sarif --output "${{ inputs.output-directory }}/cutoffguard.sarif"
+        python -m cutoffguard.cli audit-manifest "${{ inputs.manifest }}" --format junit --output "${{ inputs.output-directory }}/cutoffguard.xml"

@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -21,9 +21,42 @@ jobs:
       - run: python -m pip install -e .[dev]
       - run: pytest
       - run: python -m ruff check src tests scripts
+      - run: python -m ruff format --check src tests scripts
       - run: python -m mypy src
       - run: >-
           python -c "from cutoffguard.cli import main; p='results/ci_demo.json';
           assert main(['demo','--output',p]) == 2"
+      - run: python -m cutoffguard.cli audit-manifest examples/run-manifest/clean/run.json
+      - run: python -m cutoffguard.cli audit examples/availability/clean.jsonl --cutoff 2024-04-15T00:00:00Z --format sarif --output results/ci.sarif
+      - run: python -m cutoffguard.cli audit examples/availability/clean.jsonl --cutoff 2024-04-15T00:00:00Z --format junit --output results/ci.xml
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e .[dev]
+      - run: pytest --cov=cutoffguard --cov-report=term-missing --cov-report=xml --cov-fail-under=95
+      - name: Add coverage summary
+        run: |
+          echo '## Coverage' >> "$GITHUB_STEP_SUMMARY"
+          python -m coverage report >> "$GITHUB_STEP_SUMMARY"
+
+  package-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip build twine
       - run: python -m build
       - run: python -m twine check dist/*
+      - run: python scripts/package_smoke.py dist
