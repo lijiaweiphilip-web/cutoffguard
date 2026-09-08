@@ -1,0 +1,5 @@
+{
+  "schema_version":"1.0","run_id":"split-overlap","training_cutoff":"2024-01-31T00:00:00Z","evaluation_cutoff":"2024-06-30T00:00:00Z","records":"records.jsonl",
+  "splits":[{"name":"train","record_ids":["r1","r2"]},{"name":"validation","record_ids":["r2"]},{"name":"test","record_ids":["r3"]}],
+  "artifacts":[]
+}

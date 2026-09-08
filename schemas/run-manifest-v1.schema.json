@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lijiaweiphilip-web/cutoffguard/schemas/run-manifest-v1.schema.json",
+  "title": "CutoffGuard Run Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "training_cutoff", "evaluation_cutoff", "records", "splits", "artifacts"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "run_id": {"type": "string", "minLength": 1},
+    "training_cutoff": {"type": "string", "format": "date-time"},
+    "evaluation_cutoff": {"type": "string", "format": "date-time"},
+    "records": {
+      "oneOf": [
+        {"type": "string", "minLength": 1},
+        {"type": "array", "items": {"$ref": "record.schema.json"}}
+      ]
+    },
+    "splits": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "record_ids"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "record_ids": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "built_at", "fit_until", "source_splits"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "minLength": 1},
+          "built_at": {"type": "string", "format": "date-time"},
+          "fit_until": {"type": "string", "format": "date-time"},
+          "source_splits": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "notes": {"type": "object"}
+  }
+}

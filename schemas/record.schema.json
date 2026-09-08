@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lijiaweiphilip-web/cutoffguard/schemas/record.schema.json",
+  "title": "CutoffGuard temporal record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "observed_at"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "available_at": {"type": ["string", "null"], "format": "date-time"},
+    "label_available_at": {"type": ["string", "null"], "format": "date-time"},
+    "revised_at": {"type": ["string", "null"], "format": "date-time"},
+    "value": {},
+    "source": {"type": ["string", "null"]}
+  }
+}
