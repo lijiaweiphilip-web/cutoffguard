@@ -5,12 +5,12 @@ import sys
 import traceback
 from pathlib import Path
 
+from . import __version__
 from .audit import audit_records
 from .demo import run_demo
 from .errors import CutoffGuardError
 from .io import load_csv, load_jsonl
 from .report import render_json, write_report
-from . import __version__
 
 
 def parser():
@@ -76,7 +76,7 @@ def main(argv=None):
 
             print(render_html(report))
         return 2 if report.status == "fail" else (1 if report.status == "review" else 0)
-    except Exception as exc:
+    except (CutoffGuardError, OSError, ValueError, TypeError, KeyError) as exc:
         if getattr(args, "debug", False):
             traceback.print_exc()
         else:
