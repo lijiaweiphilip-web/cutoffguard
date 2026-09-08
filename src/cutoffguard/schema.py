@@ -18,7 +18,7 @@ def schema_path(name: str):
         raise ValueError(
             f"unknown schema {name!r}; choose record, report, or manifest"
         ) from exc
-    return files("cutoffguard").joinpath("schemas", filename)
+    return files("cutoffguard").joinpath("schemas").joinpath(filename)
 
 
 def load_schema(name: str) -> dict[str, Any]:
