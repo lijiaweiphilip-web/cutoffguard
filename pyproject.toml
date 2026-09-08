@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cutoffguard"
-version = "0.2.0"
+version = "0.2.0.dev0"
 description = "Cutoff-aware leakage diagnostics for temporal ML and research pipelines"
 readme = "README.md"
 requires-python = ">=3.10"

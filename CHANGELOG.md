@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 (candidate)
+## 0.2.0.dev0 (unreleased)
 
 ### Added
 

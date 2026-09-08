@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import glob
+import json
 import os
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -56,7 +58,7 @@ def _smoke(artifact: Path, label: str) -> None:
             str(artifact),
         )
         version = _run(python, "-m", "cutoffguard.cli", "--version")
-        if "0.2.0" not in version.stdout:
+        if "0.2.0.dev0" not in version.stdout:
             raise SystemExit(
                 f"unexpected installed version from {label}: {version.stdout}"
             )
@@ -73,6 +75,48 @@ def _smoke(artifact: Path, label: str) -> None:
             ),
             "--cutoff",
             "2024-04-15T00:00:00Z",
+        )
+        clean_manifest = (
+            Path(__file__).parents[1]
+            / "examples"
+            / "run-manifest"
+            / "clean"
+            / "run.json"
+        )
+        contaminated_manifest = (
+            Path(__file__).parents[1]
+            / "examples"
+            / "run-manifest"
+            / "split-overlap"
+            / "run.json"
+        )
+        _run(python, "-m", "cutoffguard.cli", "audit-manifest", str(clean_manifest))
+        for fmt, suffix in (("sarif", ".sarif"), ("junit", ".xml")):
+            report = env_root / f"clean{suffix}"
+            _run(
+                python,
+                "-m",
+                "cutoffguard.cli",
+                "audit-manifest",
+                str(clean_manifest),
+                "--format",
+                fmt,
+                "--output",
+                str(report),
+            )
+            if fmt == "sarif":
+                payload = json.loads(report.read_text(encoding="utf-8"))
+                if payload.get("version") != "2.1.0":
+                    raise SystemExit(f"invalid SARIF report from {label}")
+            elif ET.parse(report).getroot().tag != "testsuite":
+                raise SystemExit(f"invalid JUnit report from {label}")
+        _run(
+            python,
+            "-m",
+            "cutoffguard.cli",
+            "audit-manifest",
+            str(contaminated_manifest),
+            expect=2,
         )
 
 

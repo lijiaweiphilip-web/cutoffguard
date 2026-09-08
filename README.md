@@ -1,13 +1,13 @@
 # CutoffGuard
 
 [![CI](https://github.com/lijiaweiphilip-web/cutoffguard/actions/workflows/ci.yml/badge.svg)](https://github.com/lijiaweiphilip-web/cutoffguard/actions/workflows/ci.yml)
-[![Python 3.10-3.12](https://img.shields.io/badge/python-3.10--3.12-blue.svg)](https://www.python.org/)
+[![Python 3.10-3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Cutoff-aware leakage diagnostics for time-series ML, research pipelines, and model validation.**
 
-The `main` branch contains the v0.2.0 development line. The immutable v0.1.0
-release remains available while the v0.2.0 checks complete; this repository is
+This branch prepares the v0.2.0 release; the latest published release remains
+v0.1.0. The release line is still under review; this repository is
 not published to PyPI.
 
 Temporal leakage is often subtler than overlapping train/test rows. An observation can describe the past while becoming available only later; a forward target can mature after the declared training cutoff; a revised historical series can differ from the vintage actually available; and preprocessing can accidentally depend on future values.
