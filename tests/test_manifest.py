@@ -5,6 +5,7 @@ import pytest
 
 from cutoffguard.cli import main
 from cutoffguard.errors import InputFormatError, SchemaError
+from cutoffguard.finding_registry import FINDING_REGISTRY
 from cutoffguard.manifest import audit_manifest, load_manifest, write_manifest_template
 from cutoffguard.schema import load_schema
 
@@ -156,10 +157,153 @@ def test_artifact_checks(tmp_path):
         )
     )
     assert {
-        "ARTIFACT_BUILT_AFTER_CUTOFF",
         "ARTIFACT_FIT_AFTER_CUTOFF",
         "ARTIFACT_USES_EVAL_SPLIT",
     } <= codes(report)
+    assert "ARTIFACT_BUILT_AFTER_CUTOFF" not in codes(report)
+
+
+def test_duplicate_record_ids_are_not_silently_overwritten(tmp_path):
+    records = [
+        {
+            "id": "train_1",
+            "observed_at": "2024-01-01T00:00:00Z",
+            "available_at": "2024-01-02T00:00:00Z",
+        },
+        {
+            "id": "train_1",
+            "observed_at": "2024-01-03T00:00:00Z",
+            "available_at": "2024-01-04T00:00:00Z",
+        },
+        {
+            "id": "val_1",
+            "observed_at": "2024-02-01T00:00:00Z",
+            "available_at": "2024-02-02T00:00:00Z",
+        },
+        {
+            "id": "test_1",
+            "observed_at": "2024-06-01T00:00:00Z",
+            "available_at": "2024-06-02T00:00:00Z",
+        },
+    ]
+    report = audit_manifest(write_case(tmp_path, records=records))
+    assert "DUPLICATE_ID" in codes(report)
+    assert report.checked_records == 4
+
+
+def test_validation_and_test_availability_are_checked_at_evaluation_cutoff(tmp_path):
+    records = [
+        {
+            "id": "train_1",
+            "observed_at": "2024-01-01T00:00:00Z",
+            "available_at": "2024-01-02T00:00:00Z",
+        },
+        {
+            "id": "val_1",
+            "observed_at": "2024-07-01T00:00:00Z",
+            "available_at": "2024-07-02T00:00:00Z",
+            "label_available_at": "2024-07-03T00:00:00Z",
+        },
+        {
+            "id": "test_1",
+            "observed_at": "2024-06-01T00:00:00Z",
+        },
+    ]
+    report = audit_manifest(write_case(tmp_path, records=records))
+    assert {
+        "EVALUATION_RECORD_AFTER_CUTOFF",
+        "EVALUATION_INFORMATION_NOT_AVAILABLE",
+        "EVALUATION_LABEL_NOT_MATURE",
+    } <= codes(report)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("id", None),
+        ("kind", None),
+        ("built_at", None),
+        ("fit_until", None),
+        ("source_splits", []),
+    ],
+)
+def test_artifact_fields_are_strictly_validated(tmp_path, field, value):
+    artifact = {
+        "id": "scaler",
+        "kind": "preprocessor",
+        "built_at": "2024-01-20T00:00:00Z",
+        "fit_until": "2024-01-20T00:00:00Z",
+        "source_splits": ["train"],
+    }
+    artifact[field] = value
+    with pytest.raises(SchemaError, match="artifacts\[0\]"):
+        audit_manifest(write_case(tmp_path, artifacts=[artifact]))
+
+
+def test_duplicate_artifact_id_and_unknown_source_split_are_findings(tmp_path):
+    artifact = {
+        "id": "scaler",
+        "kind": "preprocessor",
+        "built_at": "2024-01-20T00:00:00Z",
+        "fit_until": "2024-01-20T00:00:00Z",
+        "source_splits": ["future_split"],
+    }
+    report = audit_manifest(write_case(tmp_path, artifacts=[artifact, artifact]))
+    assert {"DUPLICATE_ARTIFACT_ID", "UNKNOWN_SOURCE_SPLIT"} <= codes(report)
+
+
+def test_emitted_manifest_codes_are_explainable(tmp_path):
+    report = audit_manifest(
+        write_case(
+            tmp_path,
+            records=[
+                {
+                    "id": "train_1",
+                    "observed_at": "2024-02-01T00:00:00Z",
+                    "available_at": "2024-02-02T00:00:00Z",
+                },
+                {
+                    "id": "val_1",
+                    "observed_at": "2024-07-01T00:00:00Z",
+                },
+                {
+                    "id": "test_1",
+                    "observed_at": "2024-06-01T00:00:00Z",
+                    "available_at": "2024-06-02T00:00:00Z",
+                },
+            ],
+            artifacts=[
+                {
+                    "id": "scaler",
+                    "kind": "preprocessor",
+                    "built_at": "2024-01-20T00:00:00Z",
+                    "fit_until": "2024-02-20T00:00:00Z",
+                    "source_splits": ["validation"],
+                }
+            ],
+        )
+    )
+    assert codes(report)
+    assert codes(report) <= set(FINDING_REGISTRY)
+
+
+def test_late_replay_build_timestamp_is_provenance_only(tmp_path):
+    report = audit_manifest(
+        write_case(
+            tmp_path,
+            artifacts=[
+                {
+                    "id": "scaler",
+                    "kind": "preprocessor",
+                    "built_at": "2026-01-20T00:00:00Z",
+                    "fit_until": "2024-01-20T00:00:00Z",
+                    "source_splits": ["train"],
+                }
+            ],
+        )
+    )
+    assert report.status == "pass"
+    assert not codes(report)
 
 
 def test_missing_and_empty_splits(tmp_path):
@@ -214,6 +358,18 @@ def test_manifest_schema_and_template(tmp_path):
     assert schema["$schema"].endswith("draft/2020-12/schema")
     target = write_manifest_template(tmp_path)
     assert target.exists() and json.loads(target.read_text())["schema_version"] == "1.0"
+    assert (
+        schema["properties"]["artifacts"]["items"]["properties"]["source_splits"][
+            "minItems"
+        ]
+        == 1
+    )
+    assert (
+        schema["properties"]["splits"]["items"]["properties"]["record_ids"][
+            "uniqueItems"
+        ]
+        is True
+    )
 
 
 def test_root_and_packaged_schemas_are_byte_identical():
@@ -233,6 +389,12 @@ def test_schema_rejects_unknown_version(tmp_path):
     data["schema_version"] = "2.0"
     path.write_text(json.dumps(data))
     with pytest.raises(SchemaError, match="schema_version"):
+        load_manifest(path)
+
+
+def test_notes_must_be_an_object(tmp_path):
+    path = write_case(tmp_path, notes="not-an-object")
+    with pytest.raises(SchemaError, match="notes"):
         load_manifest(path)
 
 

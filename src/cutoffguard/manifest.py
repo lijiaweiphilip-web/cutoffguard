@@ -30,6 +30,11 @@ _MANIFEST_CODES = {
     "MISSING_SPLIT",
     "EMPTY_TRAIN_SPLIT",
     "MANIFEST_PATH_ESCAPE",
+    "EVALUATION_RECORD_AFTER_CUTOFF",
+    "EVALUATION_INFORMATION_NOT_AVAILABLE",
+    "EVALUATION_LABEL_NOT_MATURE",
+    "DUPLICATE_ARTIFACT_ID",
+    "UNKNOWN_SOURCE_SPLIT",
 }
 
 
@@ -88,7 +93,7 @@ def _safe_external_path(base: Path, value: str) -> Path:
     candidate = Path(value)
     if candidate.is_absolute() or candidate.drive or ".." in candidate.parts:
         raise InputFormatError(
-            f"MANIFEST_PATH_ESCAPE: records path must stay inside {base}"
+            "MANIFEST_PATH_ESCAPE: records path must stay inside the manifest bundle"
         )
     resolved_base = base.resolve()
     resolved = (base / candidate).resolve()
@@ -160,6 +165,8 @@ def load_manifest(path: str | Path) -> tuple[dict[str, Any], Path]:
         data.get("artifacts"), list
     ):
         raise SchemaError("manifest.splits and manifest.artifacts must be arrays")
+    if "notes" in data and not isinstance(data["notes"], dict):
+        raise SchemaError("manifest.notes must be an object")
     return data, source
 
 
@@ -185,7 +192,19 @@ def audit_manifest(path: str | Path) -> AuditReport:
             )
         )
     records = _records_from_manifest(manifest, source)
-    by_id = {r.id: r for r in records}
+    by_id: dict[str, TemporalRecord] = {}
+    for record in records:
+        if record.id in by_id:
+            findings.append(
+                _manifest_finding(
+                    "DUPLICATE_ID",
+                    record.id,
+                    "record id occurs more than once in manifest records",
+                    field="records",
+                )
+            )
+        else:
+            by_id[record.id] = record
     splits = manifest["splits"]
     split_map: dict[str, list[str]] = {}
     for index, split in enumerate(splits):
@@ -195,7 +214,7 @@ def audit_manifest(path: str | Path) -> AuditReport:
             )
         name = split.get("name")
         ids = split.get("record_ids")
-        if not isinstance(name, str) or not name:
+        if not isinstance(name, str) or not name.strip():
             raise SchemaError(f"manifest.splits[{index}].name must be non-empty")
         if name in split_map:
             findings.append(
@@ -207,7 +226,7 @@ def audit_manifest(path: str | Path) -> AuditReport:
                 )
             )
         if not isinstance(ids, list) or any(
-            not isinstance(item, str) or not item for item in ids
+            not isinstance(item, str) or not item.strip() for item in ids
         ):
             raise SchemaError(
                 f"manifest.splits[{index}].record_ids must be an array of non-empty strings"
@@ -256,36 +275,39 @@ def audit_manifest(path: str | Path) -> AuditReport:
                 )
     train_ids = split_map.get("train", [])
     for record_id in train_ids:
-        record = by_id.get(record_id)
-        if record is None:
+        train_record = by_id.get(record_id)
+        if train_record is None:
             continue
-        if record.observed_at > train_cutoff:
+        if train_record.observed_at > train_cutoff:
             findings.append(
                 _manifest_finding(
                     "TRAIN_RECORD_AFTER_CUTOFF",
                     record_id,
                     "training record is observed after training cutoff",
                     field="observed_at",
-                    observed=record.observed_at.isoformat(),
+                    observed=train_record.observed_at.isoformat(),
                     expected=train_cutoff.isoformat(),
                 )
             )
-        if record.available_at is None or record.available_at > train_cutoff:
+        if (
+            train_record.available_at is None
+            or train_record.available_at > train_cutoff
+        ):
             findings.append(
                 _manifest_finding(
                     "TRAIN_INFORMATION_NOT_AVAILABLE",
                     record_id,
                     "training information is not declared available by training cutoff",
                     field="available_at",
-                    observed=record.available_at.isoformat()
-                    if record.available_at
+                    observed=train_record.available_at.isoformat()
+                    if train_record.available_at
                     else None,
                     expected=train_cutoff.isoformat(),
                 )
             )
         if (
-            record.label_available_at is not None
-            and record.label_available_at > train_cutoff
+            train_record.label_available_at is not None
+            and train_record.label_available_at > train_cutoff
         ):
             findings.append(
                 _manifest_finding(
@@ -293,11 +315,61 @@ def audit_manifest(path: str | Path) -> AuditReport:
                     record_id,
                     "training label is not mature by training cutoff",
                     field="label_available_at",
-                    observed=record.label_available_at.isoformat(),
+                    observed=train_record.label_available_at.isoformat(),
                     expected=train_cutoff.isoformat(),
                 )
             )
+    for split_name in ("validation", "test"):
+        for record_id in split_map.get(split_name, []):
+            eval_record = by_id.get(record_id)
+            if eval_record is None:
+                continue
+            if eval_record.observed_at > eval_cutoff:
+                findings.append(
+                    _manifest_finding(
+                        "EVALUATION_RECORD_AFTER_CUTOFF",
+                        record_id,
+                        f"{split_name} record is observed after evaluation cutoff",
+                        field="observed_at",
+                        observed=eval_record.observed_at.isoformat(),
+                        expected=eval_cutoff.isoformat(),
+                    )
+                )
+            if (
+                eval_record.available_at is None
+                or eval_record.available_at > eval_cutoff
+            ):
+                findings.append(
+                    _manifest_finding(
+                        "EVALUATION_INFORMATION_NOT_AVAILABLE",
+                        record_id,
+                        f"{split_name} information is not declared available by evaluation cutoff",
+                        field="available_at",
+                        observed=(
+                            eval_record.available_at.isoformat()
+                            if eval_record.available_at is not None
+                            else None
+                        ),
+                        expected=eval_cutoff.isoformat(),
+                    )
+                )
+            if (
+                eval_record.label_available_at is not None
+                and eval_record.label_available_at > eval_cutoff
+            ):
+                findings.append(
+                    _manifest_finding(
+                        "EVALUATION_LABEL_NOT_MATURE",
+                        record_id,
+                        f"{split_name} label is not mature by evaluation cutoff",
+                        field="label_available_at",
+                        observed=eval_record.label_available_at.isoformat(),
+                        expected=eval_cutoff.isoformat(),
+                    )
+                )
     eval_names = {"validation", "test"}
+    declared_split_names = set(split_map)
+    artifact_ids: set[str] = set()
     for index, artifact in enumerate(manifest["artifacts"]):
         if not isinstance(artifact, dict):
             raise SchemaError(f"manifest.artifacts[{index}] must be an object")
@@ -309,27 +381,60 @@ def audit_manifest(path: str | Path) -> AuditReport:
                 f"manifest.artifacts[{index}] keys invalid; missing={missing}, unknown={unknown}"
             )
         artifact_id = artifact["id"]
+        if not isinstance(artifact_id, str) or not artifact_id.strip():
+            raise SchemaError(
+                f"manifest.artifacts[{index}].id must be a non-empty string"
+            )
+        if artifact_id in artifact_ids:
+            findings.append(
+                _manifest_finding(
+                    "DUPLICATE_ARTIFACT_ID",
+                    artifact_id,
+                    "artifact id occurs more than once",
+                    field=f"artifacts[{index}].id",
+                )
+            )
+        artifact_ids.add(artifact_id)
+        if not isinstance(artifact["kind"], str) or not artifact["kind"].strip():
+            raise SchemaError(
+                f"manifest.artifacts[{index}].kind must be a non-empty string"
+            )
+        for timestamp_name in ("built_at", "fit_until"):
+            value = artifact[timestamp_name]
+            if not isinstance(value, str) or not value.strip():
+                raise SchemaError(
+                    f"manifest.artifacts[{index}].{timestamp_name} must be a timezone-aware ISO-8601 string"
+                )
         try:
-            built_at = parse_ts(artifact["built_at"])
+            parse_ts(artifact["built_at"])
             fit_until = parse_ts(artifact["fit_until"])
         except (InputFormatError, ValueError) as exc:
             raise SchemaError(f"manifest.artifacts[{index}] timestamp: {exc}") from exc
         source_splits = artifact["source_splits"]
-        if not isinstance(source_splits, list) or any(
-            not isinstance(item, str) or not item for item in source_splits
+        if (
+            not isinstance(source_splits, list)
+            or not source_splits
+            or any(
+                not isinstance(item, str) or not item.strip() for item in source_splits
+            )
         ):
             raise SchemaError(
-                f"manifest.artifacts[{index}].source_splits must be an array of strings"
+                f"manifest.artifacts[{index}].source_splits must be a non-empty array of strings"
             )
-        if built_at is not None and built_at > train_cutoff:
+        if len(set(source_splits)) != len(source_splits):
+            raise SchemaError(
+                f"manifest.artifacts[{index}].source_splits must not contain duplicates"
+            )
+        unknown_splits = sorted(set(source_splits) - declared_split_names)
+        if unknown_splits:
             findings.append(
                 _manifest_finding(
-                    "ARTIFACT_BUILT_AFTER_CUTOFF",
+                    "UNKNOWN_SOURCE_SPLIT",
                     artifact_id,
-                    "artifact was built after training cutoff",
-                    field="built_at",
-                    observed=built_at.isoformat(),
-                    expected=train_cutoff.isoformat(),
+                    "artifact references an undeclared source split",
+                    field="source_splits",
+                    observed=unknown_splits,
+                    expected=sorted(declared_split_names),
                 )
             )
         if fit_until is not None and fit_until > train_cutoff:
