@@ -34,13 +34,13 @@ def future_perturbation_test(
     perturbed = tuple(float(x) for x in predictor(mutated, cutoff_index))
     if len(baseline) != len(perturbed):
         raise ValueError("predictor output length changed under perturbation")
-    diffs = [abs(a-b) for a,b in zip(baseline, perturbed)]
+    diffs = [abs(a - b) for a, b in zip(baseline, perturbed)]
     maxdiff = max(diffs, default=0.0)
     stable = math.isfinite(maxdiff) and maxdiff <= atol
     interpretation = (
         "No tested pre-cutoff output changed under this future-data perturbation. "
         "This supports this specific invariance check but does not prove absence of all leakage."
-        if stable else
-        "At least one pre-cutoff output changed after only post-cutoff values were perturbed; inspect the pipeline for future dependence."
+        if stable
+        else "At least one pre-cutoff output changed after only post-cutoff values were perturbed; inspect the pipeline for future dependence."
     )
     return PerturbationResult(stable, maxdiff, baseline, perturbed, interpretation)
