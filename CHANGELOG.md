@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0.dev0 (unreleased)
+## 0.2.0 - 2026-09-09
 
 ### Added
 
@@ -27,7 +27,7 @@
 - A declaration-level audit cannot observe opaque runtime feature engineering,
   vendor transformations, network access, or arbitrary model code.
 
-## 0.1.0
+## 0.1.0 - historical release
 
 - Initial cutoff-aware record audit.
 - Availability, label-maturity, revision, duplicate-ID checks.

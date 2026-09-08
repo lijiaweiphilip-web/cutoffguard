@@ -6,9 +6,9 @@
 
 **Cutoff-aware leakage diagnostics for time-series ML, research pipelines, and model validation.**
 
-This branch prepares the v0.2.0 release; the latest published release remains
-v0.1.0. The release line is still under review; this repository is
-not published to PyPI.
+The v0.2.0 release provides the current typed audit contracts, Run Manifest v1
+conformance checks, packaged schemas, and machine-readable reports. This
+repository is not published to PyPI.
 
 Temporal leakage is often subtler than overlapping train/test rows. An observation can describe the past while becoming available only later; a forward target can mature after the declared training cutoff; a revised historical series can differ from the vintage actually available; and preprocessing can accidentally depend on future values.
 

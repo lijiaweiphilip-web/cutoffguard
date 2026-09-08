@@ -10,6 +10,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
+import tomllib
 
 
 def _run(python: Path, *args: str, expect: int = 0) -> subprocess.CompletedProcess[str]:
@@ -30,6 +31,13 @@ def _run(python: Path, *args: str, expect: int = 0) -> subprocess.CompletedProce
 
 def _venv_python(root: Path) -> Path:
     return root / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+
+
+def _project_version() -> str:
+    """Read the version under test instead of freezing a staging version."""
+    pyproject = Path(__file__).parents[1] / "pyproject.toml"
+    with pyproject.open("rb") as stream:
+        return str(tomllib.load(stream)["project"]["version"])
 
 
 def _smoke(artifact: Path, label: str) -> None:
@@ -58,9 +66,11 @@ def _smoke(artifact: Path, label: str) -> None:
             str(artifact),
         )
         version = _run(python, "-m", "cutoffguard.cli", "--version")
-        if "0.2.0.dev0" not in version.stdout:
+        expected_version = _project_version()
+        if expected_version not in version.stdout:
             raise SystemExit(
                 f"unexpected installed version from {label}: {version.stdout}"
+                f" (expected {expected_version})"
             )
         schema = _run(python, "-m", "cutoffguard.cli", "schema", "manifest")
         if '"schema_version"' not in schema.stdout:
