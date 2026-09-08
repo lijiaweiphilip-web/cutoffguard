@@ -5,9 +5,9 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any
 
+from ._version import __version__
 from .contracts import FindingCategory, FindingCode, Severity
 from .errors import AuditConfigurationError
-from ._version import __version__
 from .records import TemporalRecord, parse_ts
 
 
