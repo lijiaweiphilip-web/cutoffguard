@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import glob
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 
 def _run(python: Path, *args: str, expect: int = 0) -> subprocess.CompletedProcess[str]:

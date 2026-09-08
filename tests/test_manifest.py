@@ -282,8 +282,7 @@ def test_manifest_external_missing_and_wrong_extension(tmp_path):
 def test_manifest_structural_errors(tmp_path, payload, message):
     path = tmp_path / "run.json"
     path.write_text(payload)
-    error = SchemaError if message != "invalid JSON" else SchemaError
-    with pytest.raises(error, match=message):
+    with pytest.raises(SchemaError, match=message):
         load_manifest(path)
 
 
