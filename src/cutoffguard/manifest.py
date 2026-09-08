@@ -17,7 +17,6 @@ from .errors import InputFormatError, SchemaError
 from .io import load_csv, load_jsonl
 from .records import TemporalRecord, parse_ts
 
-
 _MANIFEST_CODES = {
     "TRAIN_RECORD_AFTER_CUTOFF",
     "TRAIN_INFORMATION_NOT_AVAILABLE",
@@ -48,11 +47,10 @@ def _manifest_finding(
         category = FindingCategory.AVAILABILITY.value
     elif code.startswith("ARTIFACT_"):
         category = FindingCategory.ARTIFACT.value
-    elif (
-        code.startswith("SPLIT_")
-        or code.startswith("UNKNOWN_")
-        or code in {"MISSING_SPLIT", "EMPTY_TRAIN_SPLIT"}
-    ):
+    elif code.startswith(("SPLIT_", "UNKNOWN_")) or code in {
+        "MISSING_SPLIT",
+        "EMPTY_TRAIN_SPLIT",
+    }:
         category = FindingCategory.SPLIT.value
     return AuditFinding(
         code,

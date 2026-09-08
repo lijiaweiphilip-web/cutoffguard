@@ -6,6 +6,7 @@ import sys
 import traceback
 from pathlib import Path
 
+from . import __version__
 from .audit import audit_records
 from .demo import run_demo
 from .errors import CutoffGuardError
@@ -13,7 +14,6 @@ from .io import load_csv, load_jsonl
 from .manifest import audit_manifest, write_manifest_template
 from .report import render_json, write_report
 from .schema import load_schema
-from . import __version__
 
 
 def parser():
@@ -123,7 +123,7 @@ def main(argv=None):
         if report.status == "review":
             return 2 if getattr(args, "fail_on", "fail") == "review" else 1
         return 0
-    except Exception as exc:
+    except (CutoffGuardError, OSError, ValueError, TypeError, KeyError) as exc:
         if getattr(args, "debug", False):
             traceback.print_exc()
         else:
