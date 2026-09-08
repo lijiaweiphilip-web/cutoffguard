@@ -13,7 +13,7 @@ from .errors import CutoffGuardError
 from .finding_registry import definitions_as_dict, explain, list_definitions
 from .io import load_csv, load_jsonl
 from .manifest import audit_manifest, write_manifest_template
-from .report import render_json, write_report
+from .report import render_report, write_report
 from .schema import load_schema
 
 
@@ -32,7 +32,9 @@ def parser():
     a = sub.add_parser("audit", help="audit CSV/JSONL temporal records")
     a.add_argument("input")
     a.add_argument("--cutoff", required=True)
-    a.add_argument("--format", choices=["json", "html"], default="json")
+    a.add_argument(
+        "--format", choices=["json", "html", "sarif", "junit"], default="json"
+    )
     a.add_argument("--output")
     a.add_argument("--allow-missing-availability", action="store_true")
     a.add_argument(
@@ -43,7 +45,9 @@ def parser():
     )
     m = sub.add_parser("audit-manifest", help="audit a declared temporal run manifest")
     m.add_argument("manifest")
-    m.add_argument("--format", choices=["json", "html"], default="json")
+    m.add_argument(
+        "--format", choices=["json", "html", "sarif", "junit"], default="json"
+    )
     m.add_argument("--output")
     m.add_argument("--fail-on", choices=["review", "fail"], default="fail")
     m.add_argument(
@@ -53,7 +57,9 @@ def parser():
         help=argparse.SUPPRESS,
     )
     d = sub.add_parser("demo", help="run the packaged controlled demo")
-    d.add_argument("--format", choices=["json", "html"], default="json")
+    d.add_argument(
+        "--format", choices=["json", "html", "sarif", "junit"], default="json"
+    )
     d.add_argument("--output")
     d.add_argument(
         "--debug",
@@ -125,12 +131,8 @@ def main(argv=None):
             )
         if args.output:
             write_report(report, args.output, args.format)
-        elif args.format == "json":
-            print(render_json(report), end="")
         else:
-            from .report import render_html
-
-            print(render_html(report))
+            print(render_report(report, args.format), end="")
         if report.status == "fail":
             return 2
         if report.status == "review":

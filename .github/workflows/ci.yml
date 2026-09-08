@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -21,9 +21,118 @@ jobs:
       - run: python -m pip install -e .[dev]
       - run: pytest
       - run: python -m ruff check src tests scripts
+      - run: python -m ruff format --check src tests scripts
       - run: python -m mypy src
+      - run: python scripts/generate_findings_doc.py --check
       - run: >-
           python -c "from cutoffguard.cli import main; p='results/ci_demo.json';
           assert main(['demo','--output',p]) == 2"
+      - run: python -m cutoffguard.cli audit-manifest examples/run-manifest/clean/run.json
+      - run: python -m cutoffguard.cli audit examples/availability/clean.jsonl --cutoff 2024-04-15T00:00:00Z --format sarif --output results/ci.sarif
+      - run: python -m cutoffguard.cli audit examples/availability/clean.jsonl --cutoff 2024-04-15T00:00:00Z --format junit --output results/ci.xml
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e .[dev]
+      - run: pytest --cov=cutoffguard --cov-report=term-missing --cov-report=xml --cov-fail-under=95
+      - name: Add coverage summary
+        run: |
+          echo '## Coverage' >> "$GITHUB_STEP_SUMMARY"
+          python -m coverage report >> "$GITHUB_STEP_SUMMARY"
+
+  package-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip build twine
       - run: python -m build
       - run: python -m twine check dist/*
+      - run: python scripts/package_smoke.py dist
+
+  composite-action-clean-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run the composite action on a clean manifest
+        id: action
+        uses: ./
+        with:
+          manifest: examples/run-manifest/clean/run.json
+          output-directory: results/composite-clean
+      - name: Verify machine-readable reports
+        shell: bash
+        run: python scripts/verify_reports.py "${{ steps.action.outputs.sarif-path }}" "${{ steps.action.outputs.junit-path }}"
+
+  composite-action-failure-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run the composite action on a known failing manifest
+        id: action
+        continue-on-error: true
+        uses: ./
+        with:
+          manifest: examples/run-manifest/split-overlap/run.json
+          output-directory: results/composite-failure
+      - name: Require the expected failure and reports
+        shell: bash
+        run: |
+          if [ "${{ steps.action.outcome }}" != "failure" ]; then
+            echo "the contaminated manifest unexpectedly passed" >&2
+            exit 1
+          fi
+          if [ "${{ steps.action.outputs.exit-code }}" != "2" ]; then
+            echo "unexpected CutoffGuard exit code: ${{ steps.action.outputs.exit-code }}" >&2
+            exit 1
+          fi
+          python scripts/verify_reports.py "${{ steps.action.outputs.sarif-path }}" "${{ steps.action.outputs.junit-path }}"
+
+  required:
+    if: ${{ always() }}
+    needs:
+      - test
+      - coverage
+      - package-smoke
+      - composite-action-clean-smoke
+      - composite-action-failure-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every CI gate
+        shell: bash
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.coverage.result }}" != "success" ] || \
+             [ "${{ needs.package-smoke.result }}" != "success" ] || \
+             [ "${{ needs.composite-action-clean-smoke.result }}" != "success" ] || \
+             [ "${{ needs.composite-action-failure-smoke.result }}" != "success" ]; then
+            echo "one or more required gates failed" >&2
+            exit 1
+          fi
+          echo "all required gates passed"

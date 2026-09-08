@@ -1,4 +1,9 @@
-from cutoffguard import TemporalRecord, audit_records
+from datetime import datetime, timezone
+
+import pytest
+
+from cutoffguard import AuditReport, TemporalRecord, audit_records
+from cutoffguard.errors import AuditConfigurationError
 from cutoffguard.records import parse_ts
 
 
@@ -112,3 +117,19 @@ def test_assurance_boundary_is_status_neutral():
     report = audit_records([], "2024-01-03T00:00:00Z")
     assert "Findings are limited" in report.assurance_boundary
     assert "arbitrary hidden pipeline behavior" in report.assurance_boundary
+
+
+def test_missing_cutoff_is_rejected_before_audit():
+    with pytest.raises(AuditConfigurationError, match="cutoff is required"):
+        audit_records([R("a", "2024-01-01T00:00:00Z")], None)
+
+
+def test_report_serialization_preserves_explicit_generated_at():
+    report = AuditReport(
+        cutoff=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        status="pass",
+        findings=(),
+        checked_records=0,
+        generated_at="2026-09-08T00:00:00Z",
+    )
+    assert report.to_dict()["generated_at"] == "2026-09-08T00:00:00Z"

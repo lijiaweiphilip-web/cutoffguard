@@ -7,7 +7,7 @@ from cutoffguard.cli import main
 from cutoffguard.errors import InputFormatError, SchemaError
 from cutoffguard.finding_registry import FINDING_REGISTRY
 from cutoffguard.manifest import audit_manifest, load_manifest, write_manifest_template
-from cutoffguard.schema import load_schema
+from cutoffguard.schema import load_schema, schema_path
 
 
 def write_case(tmp_path, *, records=None, splits=None, artifacts=None, **overrides):
@@ -407,3 +407,103 @@ def test_cli_manifest_schema_explain_and_init(tmp_path, capsys):
     assert main(["explain", "POST_CUTOFF_AVAILABILITY"]) == 0
     assert "available" in capsys.readouterr().out
     assert main(["init", "manifest", str(tmp_path / "new")]) == 0
+
+
+def test_manifest_inline_record_error_identifies_index(tmp_path):
+    path = write_case(tmp_path)
+    data = json.loads(path.read_text())
+    data["records"] = [{"id": "bad"}]
+    path.write_text(json.dumps(data))
+    with pytest.raises(SchemaError, match=r"records\[0\].*observed_at"):
+        audit_manifest(path)
+
+
+def test_manifest_external_missing_and_wrong_extension(tmp_path):
+    path = write_case(tmp_path)
+    data = json.loads(path.read_text())
+    data["records"] = "missing.jsonl"
+    path.write_text(json.dumps(data))
+    with pytest.raises(InputFormatError, match="does not exist"):
+        audit_manifest(path)
+    data["records"] = "records.txt"
+    (path.parent / "records.txt").write_text("not a supported record file")
+    path.write_text(json.dumps(data))
+    with pytest.raises(InputFormatError, match=r"\.jsonl or \.csv"):
+        audit_manifest(path)
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ("[]", "JSON object"),
+        ("{", "invalid JSON"),
+        ('{"extra": 1}', "unknown keys"),
+        ('{"schema_version":"1.0"}', "missing keys"),
+    ],
+)
+def test_manifest_structural_errors(tmp_path, payload, message):
+    path = tmp_path / "run.json"
+    path.write_text(payload)
+    with pytest.raises(SchemaError, match=message):
+        load_manifest(path)
+
+
+def test_manifest_rejects_bad_run_id_and_non_array_fields(tmp_path):
+    path = write_case(tmp_path)
+    data = json.loads(path.read_text())
+    data["run_id"] = "  "
+    path.write_text(json.dumps(data))
+    with pytest.raises(SchemaError, match="run_id"):
+        load_manifest(path)
+    data["run_id"] = "run"
+    data["splits"] = {}
+    path.write_text(json.dumps(data))
+    with pytest.raises(SchemaError, match="arrays"):
+        load_manifest(path)
+
+
+@pytest.mark.parametrize(
+    "split",
+    [
+        {"name": "train"},
+        {"name": "", "record_ids": []},
+        {"name": "train", "record_ids": [1]},
+        {"name": "train", "record_ids": [], "extra": True},
+    ],
+)
+def test_manifest_rejects_malformed_split(tmp_path, split):
+    path = write_case(tmp_path, splits=[split])
+    with pytest.raises(SchemaError, match=r"manifest\.splits"):
+        audit_manifest(path)
+
+
+@pytest.mark.parametrize(
+    "artifact",
+    [
+        "not-an-object",
+        {"id": "x"},
+        {
+            "id": "x",
+            "kind": "preprocessor",
+            "built_at": "bad",
+            "fit_until": "2024-01-01T00:00:00Z",
+            "source_splits": ["train"],
+        },
+        {
+            "id": "x",
+            "kind": "preprocessor",
+            "built_at": "2024-01-01T00:00:00Z",
+            "fit_until": "2024-01-01T00:00:00Z",
+            "source_splits": [1],
+        },
+    ],
+)
+def test_manifest_rejects_malformed_artifact(tmp_path, artifact):
+    path = write_case(tmp_path, artifacts=[artifact])
+    with pytest.raises(SchemaError, match=r"manifest\.artifacts"):
+        audit_manifest(path)
+
+
+def test_schema_unknown_name_has_actionable_error():
+    with pytest.raises(ValueError, match="record, report, or manifest"):
+        schema_path("unknown")
