@@ -12,6 +12,8 @@ not published to PyPI.
 
 Temporal leakage is often subtler than overlapping train/test rows. An observation can describe the past while becoming available only later; a forward target can mature after the declared training cutoff; a revised historical series can differ from the vintage actually available; and preprocessing can accidentally depend on future values.
 
+![Generated report example](docs/assets/report-example.png)
+
 CutoffGuard makes those boundaries explicit and testable.
 
 ## What it checks
