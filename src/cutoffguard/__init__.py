@@ -15,15 +15,15 @@ from .perturb import PerturbationResult, future_perturbation_test
 from .records import TemporalRecord
 
 __all__ = [
+    "FINDING_REGISTRY",
     "AuditConfigurationError",
     "AuditFinding",
     "AuditReport",
     "AuditStatus",
     "CutoffGuardError",
-    "FINDING_REGISTRY",
-    "FindingDefinition",
     "FindingCategory",
     "FindingCode",
+    "FindingDefinition",
     "InputFormatError",
     "PerturbationResult",
     "SchemaError",
