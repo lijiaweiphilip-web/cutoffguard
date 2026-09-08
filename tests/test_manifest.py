@@ -236,7 +236,7 @@ def test_artifact_fields_are_strictly_validated(tmp_path, field, value):
         "source_splits": ["train"],
     }
     artifact[field] = value
-    with pytest.raises(SchemaError, match="artifacts\[0\]"):
+    with pytest.raises(SchemaError, match=r"artifacts\[0\]"):
         audit_manifest(write_case(tmp_path, artifacts=[artifact]))
 
 
