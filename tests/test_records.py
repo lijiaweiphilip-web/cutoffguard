@@ -38,7 +38,7 @@ def test_record_rejects_non_string_source():
 
 def test_direct_construction_rejects_naive_timestamp():
     with pytest.raises(ValueError, match="explicit UTC offset"):
-        TemporalRecord("a", datetime(2024, 1, 1))
+        TemporalRecord("a", datetime(2024, 1, 1, tzinfo=None))
 
 
 def test_direct_construction_normalizes_timestamps_to_utc():
