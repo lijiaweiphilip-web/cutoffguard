@@ -10,6 +10,7 @@ from .errors import (
     InputFormatError,
     SchemaError,
 )
+from .manifest import audit_manifest, load_manifest, manifest_template
 from .perturb import PerturbationResult, future_perturbation_test
 from .records import TemporalRecord
 
@@ -22,6 +23,9 @@ __all__ = [
     "FindingCategory",
     "FindingCode",
     "InputFormatError",
+    "audit_manifest",
+    "load_manifest",
+    "manifest_template",
     "PerturbationResult",
     "SchemaError",
     "Severity",
