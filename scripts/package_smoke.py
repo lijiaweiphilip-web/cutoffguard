@@ -8,9 +8,9 @@ import os
 import subprocess
 import sys
 import tempfile
+import tomllib
 import xml.etree.ElementTree as ET
 from pathlib import Path
-import tomllib
 
 
 def _run(python: Path, *args: str, expect: int = 0) -> subprocess.CompletedProcess[str]:
