@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lijiaweiphilip-web/cutoffguard/schemas/report.schema.json",
+  "title": "CutoffGuard audit report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "tool_version", "cutoff", "status", "checked_records", "finding_counts", "findings", "assurance_boundary"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "tool_version": {"type": "string", "minLength": 1},
+    "cutoff": {"type": "string", "format": "date-time"},
+    "status": {"enum": ["pass", "review", "fail"]},
+    "checked_records": {"type": "integer", "minimum": 0},
+    "finding_counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "record_id", "severity", "message", "category"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "record_id": {"type": "string"},
+          "severity": {"enum": ["warning", "error"]},
+          "message": {"type": "string"},
+          "category": {"type": "string", "minLength": 1},
+          "field": {"type": ["string", "null"]},
+          "observed": {},
+          "expected": {},
+          "evidence": {}
+        }
+      }
+    },
+    "assurance_boundary": {"type": "string", "minLength": 1},
+    "generated_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}

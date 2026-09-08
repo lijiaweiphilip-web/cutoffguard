@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible behavior problem.
+title: "[bug] "
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: CutoffGuard version
+      placeholder: "0.2.0"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS and Python
+      placeholder: "Windows 11, Python 3.11"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and minimal public input
+      description: Do not attach private financial data, credentials, or restricted datasets.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Actual and expected behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Public-safety confirmation
+      options:
+        - label: I removed credentials, private paths, client records, and restricted data.
+          required: true

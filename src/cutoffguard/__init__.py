@@ -10,6 +10,7 @@ from .errors import (
     SchemaError,
 )
 from .finding_registry import FINDING_REGISTRY, FindingDefinition
+from .manifest import audit_manifest, load_manifest, manifest_template
 from .perturb import PerturbationResult, future_perturbation_test
 from .records import TemporalRecord
 
@@ -29,6 +30,9 @@ __all__ = [
     "Severity",
     "TemporalRecord",
     "__version__",
+    "audit_manifest",
     "audit_records",
     "future_perturbation_test",
+    "load_manifest",
+    "manifest_template",
 ]
