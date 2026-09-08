@@ -9,6 +9,7 @@ from .errors import (
     InputFormatError,
     SchemaError,
 )
+from .finding_registry import FINDING_REGISTRY, FindingDefinition
 from .perturb import PerturbationResult, future_perturbation_test
 from .records import TemporalRecord
 
@@ -18,6 +19,8 @@ __all__ = [
     "AuditReport",
     "AuditStatus",
     "CutoffGuardError",
+    "FINDING_REGISTRY",
+    "FindingDefinition",
     "FindingCategory",
     "FindingCode",
     "InputFormatError",

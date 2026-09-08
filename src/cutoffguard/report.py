@@ -28,7 +28,7 @@ def render_html(report: AuditReport) -> str:
 <h1>CutoffGuard</h1><div><span class="pill {status_class}">{report.status.upper()}</span></div>
 <div class="card"><b>Cutoff</b>: {html.escape(report.cutoff.isoformat())}<br><b>Checked records</b>: {report.checked_records}</div>
 <div class="card"><h2>Findings</h2><table><thead><tr><th>Code</th><th>Record</th><th>Severity</th><th>Meaning</th></tr></thead><tbody>{rows}</tbody></table></div>
-<div class="card"><h2>Assurance boundary</h2><p>No listed temporal violation was found only means the declared metadata passed the implemented checks. It is not a proof that an arbitrary model, feature pipeline, vendor dataset, or opaque training process is leakage-free.</p></div>
+<div class="card"><h2>Assurance boundary</h2><p>Findings are limited to the declared metadata and implemented checks. The report does not establish that arbitrary hidden pipeline behavior is leakage-free.</p></div>
 <small>Generated locally by CutoffGuard.</small></body></html>"""
 
 

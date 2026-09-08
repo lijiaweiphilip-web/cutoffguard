@@ -25,6 +25,7 @@ class FindingCategory(str, Enum):
 
 
 class FindingCode(str, Enum):
+    EMPTY_INPUT = "EMPTY_INPUT"
     DUPLICATE_ID = "DUPLICATE_ID"
     FUTURE_OBSERVATION = "FUTURE_OBSERVATION"
     MISSING_AVAILABILITY = "MISSING_AVAILABILITY"

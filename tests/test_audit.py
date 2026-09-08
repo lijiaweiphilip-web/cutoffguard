@@ -98,3 +98,17 @@ def test_duplicate_id_fails():
             "2024-01-03T00:00:00Z",
         )
     )
+
+
+def test_empty_input_is_review_not_clean():
+    report = audit_records([], "2024-01-03T00:00:00Z")
+    assert report.status == "review"
+    assert report.checked_records == 0
+    assert codes(report) == {"EMPTY_INPUT"}
+    assert report.findings[0].severity == "warning"
+
+
+def test_assurance_boundary_is_status_neutral():
+    report = audit_records([], "2024-01-03T00:00:00Z")
+    assert "Findings are limited" in report.assurance_boundary
+    assert "arbitrary hidden pipeline behavior" in report.assurance_boundary

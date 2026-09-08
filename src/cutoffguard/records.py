@@ -38,19 +38,49 @@ class TemporalRecord:
     value: Any = None
     source: str | None = None
 
+    def __post_init__(self) -> None:
+        """Enforce the public record contract for every construction path.
+
+        ``from_dict`` is not the only way callers can construct a record.  The
+        frozen dataclass therefore validates and normalises values here as
+        well, while deliberately refusing implicit identifier/source coercion.
+        """
+        if not isinstance(self.id, str) or not self.id.strip():
+            raise InputFormatError("record id must be a non-empty string")
+        if self.source is not None and not isinstance(self.source, str):
+            raise InputFormatError("source must be a string or null")
+        for field_name in (
+            "observed_at",
+            "available_at",
+            "label_available_at",
+            "revised_at",
+        ):
+            value = getattr(self, field_name)
+            if value is None:
+                if field_name == "observed_at":
+                    raise InputFormatError("observed_at is required")
+                continue
+            if not isinstance(value, datetime):
+                raise InputFormatError(f"{field_name} must be a datetime")
+            if value.tzinfo is None:
+                raise InputFormatError(
+                    f"{field_name} must include an explicit UTC offset"
+                )
+            object.__setattr__(self, field_name, value.astimezone(timezone.utc))
+
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> TemporalRecord:
         if not isinstance(d, Mapping):
             raise InputFormatError("record must be a JSON object")
-        if not d.get("id"):
-            raise InputFormatError("record id is required")
+        if "id" not in d or not isinstance(d["id"], str) or not d["id"].strip():
+            raise InputFormatError("record id must be a non-empty string")
         if "observed_at" not in d:
             raise InputFormatError("observed_at is required")
         observed_at = parse_ts(d["observed_at"])
         if observed_at is None:
             raise InputFormatError("observed_at is required")
         return cls(
-            id=str(d["id"]),
+            id=d["id"],
             observed_at=observed_at,
             available_at=parse_ts(d.get("available_at")),
             label_available_at=parse_ts(d.get("label_available_at")),

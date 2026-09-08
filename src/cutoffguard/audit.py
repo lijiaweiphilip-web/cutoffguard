@@ -34,8 +34,9 @@ class AuditReport:
     tool_version: str = field(default_factory=lambda: __version__)
     finding_counts: dict[str, int] = field(default_factory=dict)
     assurance_boundary: str = (
-        "No listed temporal violation was found under the declared metadata. "
-        "This is not proof that an arbitrary pipeline is leakage-free."
+        "Findings are limited to the declared metadata and implemented checks. "
+        "The report does not establish that arbitrary hidden pipeline behavior "
+        "is leakage-free."
     )
     generated_at: str | None = None
 
@@ -178,6 +179,16 @@ def audit_records(
                     expected=c.isoformat(),
                 )
             )
+    if count == 0:
+        findings.append(
+            _finding(
+                FindingCode.EMPTY_INPUT,
+                "",
+                Severity.WARNING,
+                "no records were provided for audit",
+                FindingCategory.INPUT,
+            )
+        )
     findings.sort(
         key=lambda f: (
             _SEVERITY_ORDER.get(f.severity, 99),

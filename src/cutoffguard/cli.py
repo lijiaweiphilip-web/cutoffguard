@@ -9,6 +9,7 @@ from . import __version__
 from .audit import audit_records
 from .demo import run_demo
 from .errors import CutoffGuardError
+from .finding_registry import definitions_as_dict, explain, list_definitions
 from .io import load_csv, load_jsonl
 from .report import render_json, write_report
 
@@ -37,6 +38,10 @@ def parser():
         default=argparse.SUPPRESS,
         help=argparse.SUPPRESS,
     )
+    e = sub.add_parser("explain", help="explain a finding code")
+    e.add_argument("code", nargs="?")
+    e.add_argument("--list", action="store_true", help="list registered finding codes")
+    e.add_argument("--format", choices=["text", "json"], default="text")
     d = sub.add_parser("demo", help="run the packaged controlled demo")
     d.add_argument("--format", choices=["json", "html"], default="json")
     d.add_argument("--output")
@@ -54,6 +59,33 @@ def main(argv=None):
     try:
         if args.cmd == "demo":
             report = run_demo()
+        elif args.cmd == "explain":
+            if args.list:
+                if args.format == "json":
+                    import json
+
+                    print(json.dumps(definitions_as_dict(), indent=2) + "\n", end="")
+                else:
+                    print("\n".join(item.code for item in list_definitions()))
+                return 0
+            if not args.code:
+                raise CutoffGuardError("provide a finding code or use --list")
+            definition = explain(args.code)
+            if definition is None:
+                raise CutoffGuardError(f"unknown finding code: {args.code}")
+            if args.format == "json":
+                import json
+
+                print(json.dumps(definition.__dict__, indent=2) + "\n", end="")
+            else:
+                print(
+                    f"{definition.code}: {definition.short_explanation}\n"
+                    f"Category: {definition.category}\n"
+                    f"Default severity: {definition.default_severity}\n"
+                    f"Remediation: {definition.remediation}\n"
+                    f"Applies to: {definition.applies_to}"
+                )
+            return 0
         else:
             path = Path(args.input)
             if path.suffix.lower() == ".jsonl":
