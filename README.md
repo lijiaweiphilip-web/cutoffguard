@@ -1,6 +1,7 @@
 # CutoffGuard
 
 [![CI](https://github.com/lijiaweiphilip-web/cutoffguard/actions/workflows/ci.yml/badge.svg)](https://github.com/lijiaweiphilip-web/cutoffguard/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/lijiaweiphilip-web/cutoffguard?label=release)](https://github.com/lijiaweiphilip-web/cutoffguard/releases/latest)
 [![Python 3.10-3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -16,6 +17,12 @@ Temporal leakage is often subtler than overlapping train/test rows. An observati
 
 CutoffGuard makes those boundaries explicit and testable.
 
+## At a glance
+
+| Input | Checks | Output |
+| --- | --- | --- |
+| records and run manifests | availability, label maturity, split and artifact boundaries | JSON, HTML, SARIF, JUnit |
+
 ## What it checks
 
 - observations timestamped after a declared cutoff;
@@ -27,8 +34,22 @@ CutoffGuard makes those boundaries explicit and testable.
 
 ## Quick start
 
+Install the verified `v0.2.0` wheel directly from the GitHub Release (the
+project is not published to PyPI):
+
+```bash
+python -m pip install https://github.com/lijiaweiphilip-web/cutoffguard/releases/download/v0.2.0/cutoffguard-0.2.0-py3-none-any.whl
+```
+
+For a source checkout instead:
+
 ```bash
 python -m pip install -e .
+```
+
+Then run the examples:
+
+```bash
 cutoffguard demo --format html --output results/demo_report.html
 cutoffguard audit examples/clean.jsonl --cutoff 2024-03-05T00:00:00Z
 cutoffguard audit examples/contaminated.jsonl --cutoff 2024-04-15T00:00:00Z
@@ -101,6 +122,19 @@ This project turns temporal-validation practices into an installable, inspectabl
 See [`docs/QUICKSTART.md`](docs/QUICKSTART.md), [`docs/CONCEPTS.md`](docs/CONCEPTS.md),
 [`docs/RUN_MANIFEST.md`](docs/RUN_MANIFEST.md), [`docs/REPORT_FORMATS.md`](docs/REPORT_FORMATS.md),
 [`docs/SCHEMA.md`](docs/SCHEMA.md), and [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
+
+## Repository map
+
+- `src/cutoffguard`: installable package and packaged schemas;
+- `examples`: clean, contaminated, and manifest fixtures;
+- `docs`: concepts, quickstart, reports, and limitations;
+- `tests`: contract and regression tests;
+- `results`: local demo outputs (not tracked as benchmark claims).
+
+## Citation
+
+Use the repository's `CITATION.cff` through GitHub's **Cite this repository**
+button. No DOI is claimed for this software release.
 
 ## Development
 
